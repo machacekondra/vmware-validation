@@ -1,0 +1,24 @@
+namespace: machacekondra
+name: vmware_validation
+version: 1.0.0
+readme: README.md
+authors:
+  - Ansible Cloud Content Team (@redhat-cop)
+description: Collection to manage VMware validation
+license_file: LICENSE
+tags:
+  - vmware
+  - infrastructure
+repository: https://github.com/machacekondra/vmware-validation
+issues: https://github.com/machacekondra/vmware-validation
+homepage: https://github.com/machacekondra/vmware-validation
+build_ignore:
+  - .gitignore
+  - changelogs/.plugin-cache.yaml
+  - tmp
+  - context
+  - .idea
+dependencies:
+  "vmware.vmware_rest": ">=2.3.1"
+  "community.vmware": ">=4.4.0"
+  "vmware.vmware": ">=1.0.0"
