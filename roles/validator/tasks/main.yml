@@ -1,17 +1,3 @@
-- name: Run the validator image
-  containers.podman.podman_container:
-    name: vmwarevalidator
-    state: started
-    recreate: true
-    image: quay.io/kubev2v/forklift-validation:release-v2.6.4
-    entrypoint: '/usr/bin/opa'
-    ports:
-      - "8181:8181"
-    command:
-      - "run"
-      - "--server"
-      - "/usr/share/opa/policies"
-
 - name: Download collector binary
   ansible.builtin.get_url:
     url: "{{  collector_binary_url }}"
@@ -40,8 +26,3 @@
   copy:
     content: "{{ output_content | to_json(indent=4) }}"
     dest: "{{ validator_output_file_name }}"
-
-- name: Remove validator image
-  containers.podman.podman_container:
-    name: vmwarevalidator
-    state: absent
