@@ -1,4 +1,0 @@
-collections:
-  - type: git
-    name: https://github.com/machacekondra/vmware-validation.git
-  - name: community.general
