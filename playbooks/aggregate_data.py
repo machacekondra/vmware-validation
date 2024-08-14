@@ -74,7 +74,7 @@ def histogram(data_list):
 
     return {
         "minValue": min_val,
-        "step": bin_size,
+        "step": round(bin_size),
         "data": bins
     }
 
