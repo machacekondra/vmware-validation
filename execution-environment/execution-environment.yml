@@ -16,3 +16,5 @@ dependencies:
     - PyYAML
   ansible_core:
     package_pip: ansible-core==2.15.12
+options:
+  user: "1001"

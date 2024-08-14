@@ -200,16 +200,13 @@ def migrateable_vms(validator):
             # category can be one of: “Critical”, “Warning”, or “Information”
             if result["category"] == "Warning":
                 has_warning = True
-                # FIXME: when new API ..
-                #warnings = add_new_assessment_to_dict_if_needed(result, warnings)
-                #warnings[result["label"]]["total_vms"] = warnings[result["label"]]["total_vms"] + 1
-                warnings[result["label"]] = warnings.get(result["label"], 0) + 1
+                warnings = add_new_assessment_to_dict_if_needed(result, warnings)
+                warnings[result["label"]]["total_vms"] = warnings[result["label"]]["total_vms"] + 1
 
             if result["category"] == "Critical":
                 migratable = False
-                #errors = add_new_assessment_to_dict_if_needed(result, errors)
-                #errors[result["label"]]["total_vms"] = errors[result["label"]]["total_vms"] + 1
-                errors[result["label"]] = errors.get(result["label"], 0) + 1
+                errors = add_new_assessment_to_dict_if_needed(result, errors)
+                errors[result["label"]]["total_vms"] = errors[result["label"]]["total_vms"] + 1
 
         if migratable:
             migratable_vms[vm_name] = vm
