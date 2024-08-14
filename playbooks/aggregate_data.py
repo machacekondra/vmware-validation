@@ -55,6 +55,28 @@ def infra_host_powerstate(esxi_hosts):
         power_state[host['power_state']] = power_state[host['power_state']] + 1
     return power_state
 
+def histogram(data_list):
+    min_val = min(data_list)
+    max_val = max(data_list)
+    range_values = max_val-min_val
+    number_of_data_points = len(data_list)
+    number_of_bins = (int) (number_of_data_points ** 0.5)
+    bin_size = range_values / number_of_bins
+    # initialize the bin with 0s
+    bins = [0 for _ in range(number_of_bins)]
+
+    for data in data_list:
+        bin_index = (int) ((data - min_val) / bin_size)
+        if bin_index == number_of_bins:
+            bin_index = bin_index - 1
+
+        bins[bin_index] = bins[bin_index] + 1
+
+    return {
+        "minValue": min_val,
+        "step": bin_size,
+        "data": bins
+    }
 
 def vms(vm_details, validator):
     migrateable_vms_data = migrateable_vms(validator)
@@ -87,6 +109,10 @@ def vms(vm_details, validator):
 
     power_state = {}
     guest_os = {}
+    cpu_set = []
+    disk_count_set = []
+    disk_GB_set = []
+    memory_set = []
 
     for vm in vm_details:
         vm_memory = vm['memory']['size_MiB']
@@ -96,6 +122,13 @@ def vms(vm_details, validator):
             total_disk_capacity = total_disk_capacity + vm['disks'][vm_disk]['capacity']
         total_disk_capacity_GB = get_value_in_GB(total_disk_capacity)
         vm_disk_count = len(vm['disks'])
+
+        #update the histogram data list
+        cpu_set.append(vm_cpu)
+        disk_count_set.append(vm_disk_count)
+        disk_GB_set.append(total_disk_capacity_GB)
+        memory_set.append(vm_memory)
+
         # migrateable
         if vm["name"] in migrateable_vms_data["migratable_vms"]:
             total_memory["total_for_migrateable"] = total_memory["total_for_migrateable"] + vm_memory
@@ -134,33 +167,28 @@ def vms(vm_details, validator):
         "totalForMigratable": total_cpu["total_for_migrateable"],
         "totalForMigratableWithWarnings": total_cpu["total_for_migrateable_with_warnings"],
         "totalForNotMigratable": total_cpu["total_for_not_migrateable"],
-        # FIXME: Load correct data or make histogram non-mandatory
-        "histogram": {"minValue": 1, "step": 1, "data": [3, 0, 2, 5]}
+        "histogram": histogram(cpu_set)
     }
     ram = {
         "total": total_memory["total"],
         "totalForMigratable": total_memory["total_for_migrateable"],
         "totalForMigratableWithWarnings": total_memory["total_for_migrateable_with_warnings"],
         "totalForNotMigratable": total_memory["total_for_not_migrateable"],
-        # FIXME: Load correct data or make histogram non-mandatory
-        "histogram": {"minValue": 1, "step": 1, "data": [3, 0, 2, 5]}
+        "histogram": histogram(memory_set)
     }
     diskGB = {
         "total": total_disk_GB["total"],
         "totalForMigratable": total_disk_GB["total_for_migrateable"],
         "totalForMigratableWithWarnings": total_disk_GB["total_for_migrateable_with_warnings"],
         "totalForNotMigratable": total_disk_GB["total_for_not_migrateable"],
-        # FIXME: Load correct data or make histogram non-mandatory
-        "histogram": {"minValue": 1, "step": 1, "data": [3, 0, 2, 5]}
+        "histogram": histogram(disk_GB_set)
     }
     diskCount = {
         "total": total_disk_count["total"],
         "totalForMigratable": total_disk_count["total_for_migrateable"],
         "totalForMigratableWithWarnings": total_disk_count["total_for_migrateable_with_warnings"],
         "totalForNotMigratable": total_disk_count["total_for_not_migrateable"],
-        # FIXME: Load correct data or make histogram non-mandatory
-        "histogram": {"minValue": 1, "step": 1, "data": [3, 0, 2, 5]}
-
+        "histogram": histogram(disk_count_set)
     }
     return {
         "total": total_vms,
@@ -177,21 +205,19 @@ def vms(vm_details, validator):
         "notMigratableReasons": migrateable_vms_data["errors"]
     }
 
-def add_new_assessment_to_dict_if_needed(result, assessment_dict):
-    if result["label"] not in assessment_dict:
-        assessment_dict[result["label"]] = {
-            "assessment": result["assessment"],
-            "total_vms": 0
-        }
-
-    return assessment_dict
+def update_if_exists(assesments, key, value):
+    for a in assesments:
+        if a.get(key) == value:
+            a["count"] += 1
+            return True
+    return False
 
 def migrateable_vms(validator):
     migratable_vms = {}
     migratable_vms_with_warnings = {}
     not_migratable_vms = {}
-    warnings = {}
-    errors = {}
+    warnings = []
+    errors = []
     for vm_name in validator:
         migratable = True
         has_warning = False
@@ -200,13 +226,21 @@ def migrateable_vms(validator):
             # category can be one of: “Critical”, “Warning”, or “Information”
             if result["category"] == "Warning":
                 has_warning = True
-                warnings = add_new_assessment_to_dict_if_needed(result, warnings)
-                warnings[result["label"]]["total_vms"] = warnings[result["label"]]["total_vms"] + 1
+                if not update_if_exists(warnings, "label", result["label"]):
+                    warnings.append({
+                        "label": result["label"],
+                        "assessment": result["assessment"],
+                        "count": 1
+                    })
 
             if result["category"] == "Critical":
                 migratable = False
-                errors = add_new_assessment_to_dict_if_needed(result, errors)
-                errors[result["label"]]["total_vms"] = errors[result["label"]]["total_vms"] + 1
+                if not update_if_exists(errors, "label", result["label"]):
+                    errors.append({
+                        "label": result["label"],
+                        "assessment": result["assessment"],
+                        "count": 1
+                    })
 
         if migratable:
             migratable_vms[vm_name] = vm
